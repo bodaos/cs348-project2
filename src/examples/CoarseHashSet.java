@@ -1,9 +1,7 @@
 package examples;
 
-import java.util.concurrent.locks.ReadWriteLock;
 
 public class CoarseHashSet<T> implements Set<T> {
-	private ReadWriteLock entire; 
 
 	/**
 	 * Helper class - basically is a linked list of items that happen to map to
@@ -66,7 +64,6 @@ public class CoarseHashSet<T> implements Set<T> {
 			while (bucket != null) {
 				if (item.equals(bucket.item)) {
 					return true;
-
 				}
 				bucket = bucket.next;
 			}
@@ -79,20 +76,16 @@ public class CoarseHashSet<T> implements Set<T> {
 	 * @see examples.Set#add(java.lang.Object)
 	 */
 	@Override
-	public boolean add(T item) {
+	public synchronized boolean add(T item) {
 		// Java returns a negative number for the hash; this is just converting
 		// the negative number to a location in the array.
 		int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
-		entire.readLock().lock();
-		try {
 			Bucket bucket = table[hash];
 			if (contains(bucket, item)) {
 				return false;
 			}
 			table[hash] = new Bucket(item, bucket);
-		} finally {
-			entire.readLock().unlock();
-		}
+		
 		return true;
 	}
 
@@ -101,15 +94,10 @@ public class CoarseHashSet<T> implements Set<T> {
 	 * @see examples.Set#contains(java.lang.Object)
 	 */
 	@Override
-	public boolean contains(T item) {
+	public synchronized boolean  contains(T item) {
 		int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
-		entire.readLock().lock();
-		try {
 		Bucket bucket = table[hash];
 		return contains(bucket, item);
-		} finally {
-			entire.readLock().unlock();
-		}
 	}
 	
 }

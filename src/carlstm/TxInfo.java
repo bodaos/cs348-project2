@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 /**
  * This class holds transactional state for a single thread. You should use
@@ -13,12 +14,11 @@ import java.util.concurrent.locks.ReadWriteLock;
  */
 
 class TxInfo<T> {
-	int backoffTime = 1; 
 	/**
 	 * variable to indicate if a thread is running
 	 *
 	 */
-	
+
 	public boolean active = false;
 	/**
 	 * Data structure to hold all the updates
@@ -43,33 +43,33 @@ class TxInfo<T> {
 		active = true;
 	}
 	//Delegate method to read a value of an item updates
-	public T read(TxObject<T> object){
+	public T read(TxObject<T> object) throws TransactionAbortedException{
 		if(updates.containsKey(object)){
 			return  updates.get(object).newValue;
 		}else{
-			object.lock.readLock().lock();
-			try {
-				Update<T> newUpdate = new Update<T>(object, object.value, object.value);
+			if(object.lock.readLock().tryLock()){
+				Update<T> newUpdate = new Update<T>(object, object.value,
+						object.value);
 				updates.put(object, newUpdate);
-				return object.value; 
-			} finally {
 				object.lock.readLock().unlock();
+				return newUpdate.newValue;
+			}else{
+				throw new TransactionAbortedException();
 			}
-			
-		}
+
+		} 
 	}
-	public void write(TxObject<T> object, T value){
+	public void write(TxObject<T> object, T value) throws TransactionAbortedException{
 		if(updates.containsKey(object)){
 			updates.get(object).newValue = value;
 		}else{
-			object.lock.readLock().lock();
-			try {
-				Update<T> newUpdate = new Update<T>(object, object.value, value);
-				updates.put(object, newUpdate);
-			} finally {
-				object.lock.readLock().unlock();
+			if(object.lock.writeLock().tryLock()){
+			Update<T> newUpdate = new Update<T>(object, object.value, value);
+			updates.put(object, newUpdate);
+			object.lock.readLock().unlock();
+			}else{
+				throw new TransactionAbortedException();
 			}
-			
 		}
 	}
 	//Delegate method to write a value of an item to updates
@@ -79,9 +79,10 @@ class TxInfo<T> {
 	 * written TxObjects, acquiring locks on those objects as needed.
 	 * 
 	 * @return true if the commit succeeds, false if the transaction aborted
+	 * @throws TransactionAbortedException 
 	 */
-	
-	boolean commit() {
+
+	boolean commit() throws TransactionAbortedException {
 		// TODO implement me
 		//Iterate through the hashmap: 
 		boolean success = true;
@@ -103,63 +104,58 @@ class TxInfo<T> {
 						return false;
 					}
 				}else{
-					//acquiring readlock falied;
-					this.abort();
-					return false;
-				}
-			}else{
-				//the oldValue != newValue then we have to acqure the write lock
-				if(curObject.lock.writeLock().tryLock()){
-					txWriteLockAcquired.add(curObject);
-					//check "expected old value"
-					if (curObject.value != updates.get(curObject).oldValue){
 						this.abort();
-						return false;
+						throw new TransactionAbortedException();
 					}
-					
 				}else{
-					this.abort();
-					return false;
+					//the oldValue != newValue then we have to acquire the write lock
+					if(curObject.lock.writeLock().tryLock()){
+						txWriteLockAcquired.add(curObject);
+						//check "expected old value"
+						if (curObject.value != updates.get(curObject).oldValue){
+							this.abort();
+							return false;
+						}
+
+					}else{
+						this.abort();
+						throw new TransactionAbortedException();
+					}
 				}
+				//Release the readLock()
+				this.ReleaseReadLocks();
+				//Perform the write update
+				for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
+					TxObject<T> cur =  txWriteLockAcquired.get(i);
+					cur.value = updates.get(cur).newValue;
+				}
+				//Release the write locks
+				this.ReleaseWriteLocks();
 			}
-			//Release the readLock()
-			this.ReleaseReadLocks();
-			//Perform the write update
+
+			return success;
+		}
+
+		/**
+		 * This method cleans up any transactional state if a transaction aborts.
+		 */
+		void ReleaseReadLocks(){
+			for (int i = 0; i <  txReadLockAcquired.size() ; i++){
+				TxObject<T> cur =  txReadLockAcquired.get(i);
+				cur.lock.readLock().unlock();
+				txReadLockAcquired.remove(i);
+			}
+		}
+		void ReleaseWriteLocks(){
 			for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
 				TxObject<T> cur =  txWriteLockAcquired.get(i);
-				cur.value = updates.get(cur).newValue;
+				cur.lock.writeLock().unlock();
+				txWriteLockAcquired.remove(i);
 			}
-			//Release the write locks
+		}
+		void abort() {
+			this.ReleaseReadLocks();
 			this.ReleaseWriteLocks();
-		}
-
-		return success;
-	}
-
-	/**
-	 * This method cleans up any transactional state if a transaction aborts.
-	 */
-	void ReleaseReadLocks(){
-		for (int i = 0; i <  txReadLockAcquired.size() ; i++){
-			TxObject<T> cur =  txReadLockAcquired.get(i);
-			cur.lock.readLock().unlock();
-			txReadLockAcquired.remove(i);
+			updates.clear();
 		}
 	}
-	void ReleaseWriteLocks(){
-		for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
-			TxObject<T> cur =  txWriteLockAcquired.get(i);
-			cur.lock.writeLock().unlock();
-			txWriteLockAcquired.remove(i);
-		}
-	}
-	void abort() {
-		this.ReleaseReadLocks();
-		this.ReleaseWriteLocks();
-		updates.clear();
-	}
-	void delay(){
-		backoffTime = backoffTime*2;
-		
-	}
-}

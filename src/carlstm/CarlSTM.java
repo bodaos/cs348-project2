@@ -28,8 +28,15 @@ package carlstm;
  * </pre>
  */
 
+
 public class CarlSTM {
-    public static final ThreadLocal<TxInfo> threadLocal =
+	/**
+	 * backoff time
+	 *
+	 */
+	long backoff = 1;
+    @SuppressWarnings("rawtypes")
+	public static final ThreadLocal<TxInfo> threadLocal =
             new ThreadLocal<TxInfo>() {
                 @Override protected TxInfo initialValue() {
                     return new TxInfo() ;
@@ -45,26 +52,31 @@ public class CarlSTM {
 	 * @return result of the transaction
 	 */
 	public static <T> T execute(Transaction<T> tx) {
-		// TODO implement me
-		
+		long wait = 1;
+		while(true){
 		try {
 			threadLocal.get().start();
 			T result =  tx.run();
-			if(threadLocal.get().commit()){
-				return result;
-			}
-			threadLocal.remove();
-			return execute(tx);
+			threadLocal.get().commit();
+			return result;
 		} catch (NoActiveTransactionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return null;
 		} catch (TransactionAbortedException e) {
 			// TODO Auto-generated catch block
-			threadLocal.remove();
-			//execute(tx);
-			e.printStackTrace();
-			return null;
+			//e.printStackTrace();
+			//Clears all the existing updates and re-run the transaction;
+			try {
+				Thread.sleep(wait);
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				System.out.println("sleep interrupted");
+				return null;
+			}
+			threadLocal.set(new TxInfo<T>());
+			wait = wait*2;
+		}
 		}
 	}
 }
