@@ -1,6 +1,7 @@
 package examples;
 
 import carlstm.NoActiveTransactionException;
+import carlstm.Transaction;
 import carlstm.TransactionAbortedException;
 import carlstm.TxObject;
 
@@ -8,6 +9,16 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	/**
 	 *Constructor
 	 */
+	private static class HashTransaction implements Transaction {
+
+		@Override
+		public Object run() throws NoActiveTransactionException,
+				TransactionAbortedException {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		
+	}
 	private static class Bucket {
 		/**
 		 * The item stored at this entry. This is morally of type T, but Java

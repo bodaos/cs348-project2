@@ -18,13 +18,17 @@ public final class TxObject<T> {
 	public T read() throws NoActiveTransactionException,
 			TransactionAbortedException {
 		// TODO implement me
+		if(CarlSTM.threadLocal.get() == null) throw new NoActiveTransactionException();
+		@SuppressWarnings("unchecked")
 		T value =(T) CarlSTM.threadLocal.get().read(this);
 		return value;
 	}
 
+	@SuppressWarnings("unchecked")
 	public void write(T value) throws NoActiveTransactionException,
 			TransactionAbortedException {
 		// TODO implement me
+		if(CarlSTM.threadLocal.get() == null) throw new NoActiveTransactionException();
 		CarlSTM.threadLocal.get().write(this, value);
 	}
 }
