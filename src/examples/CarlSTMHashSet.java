@@ -1,5 +1,6 @@
 package examples;
 
+import carlstm.CarlSTM;
 import carlstm.NoActiveTransactionException;
 import carlstm.Transaction;
 import carlstm.TransactionAbortedException;
@@ -9,13 +10,47 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	/**
 	 *Constructor
 	 */
-	private static class HashTransaction implements Transaction {
+	public class HashTransactionAdd implements Transaction<Boolean> {
+		@SuppressWarnings("rawtypes")
+		CarlSTMHashSet someSet;
+		T someObject;
+		public HashTransactionAdd(@SuppressWarnings("rawtypes") CarlSTMHashSet set, T object){
+			this.someSet = set;
+			this.someObject = object;
+		}
 
 		@Override
-		public Object run() throws NoActiveTransactionException,
+		public Boolean run() throws NoActiveTransactionException,
+				TransactionAbortedException {
+			int hash = (someObject.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
+			@SuppressWarnings("unchecked")
+			TxObject<Bucket> head = someSet.table[hash];
+			Bucket oldHeadBucket = head.read();
+			if (contains(oldHeadBucket, someObject)) {
+				return false;
+			}
+			head.write(new Bucket(someObject, oldHeadBucket)); 
+			return true;
+			
+		}
+		
+	}
+	public  class HashTransactionContains implements Transaction<Boolean> {
+		public 
+		CarlSTMHashSet someSet;
+		T someObject;
+		public HashTransactionContains(CarlSTMHashSet set, T object){
+			this.someSet = set;
+			this.someObject = object;
+		}
+		@Override
+		public Boolean run() throws NoActiveTransactionException,
 				TransactionAbortedException {
 			// TODO Auto-generated method stub
-			return null;
+			int hash = (someObject.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
+			TxObject<Bucket> head = someSet.table[hash];
+			Bucket oldHeadBucket = head.read();
+			return contains(oldHeadBucket, someObject);
 		}
 		
 	}
@@ -25,7 +60,7 @@ public class CarlSTMHashSet<T> implements Set<T> {
 		 * generics do not play well with arrays, so we have to use Object
 		 * instead.
 		 */
-		TxObject item;
+		Object item;
 
 		/**
 		 * Next item in the list.
@@ -38,7 +73,7 @@ public class CarlSTMHashSet<T> implements Set<T> {
 		 * @param item item to be stored
 		 * @param next next item in the list
 		 */
-		public Bucket(TxObject item, Bucket next) {
+		public Bucket(Object item, Bucket next) {
 			this.item = item;
 			this.next = next;
 		}
@@ -47,7 +82,7 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	 * Our array of items. Each location in the array stores a linked list items
 	 * that hash to that locations.
 	 */
-	private Bucket[] table;
+	private TxObject<Bucket>[] table;
 	/**
 	 * Capacity of the array. Since we do not support resizing, this is a
 	 * constant.
@@ -57,7 +92,7 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	 * Create a new CarlSTMH ashSet.
 	 */
 	public CarlSTMHashSet() {
-		this.table = new Bucket[CAPACITY];
+		this.table = new TxObject[CAPACITY];
 	}
 	/**
 	 * A helper method to see if an item is stored at a given bucket.
@@ -66,39 +101,25 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	 * @param item item to be searched for
 	 * @return true if the item is in the bucket
 	 */
-	private boolean contains(Bucket bucket, TxObject item) {
+	private boolean contains(Bucket bucket, T item) {
 		while (bucket != null) {
-
-			try {
-				if (item.read() == bucket.item.read()) {
-					return true;
-				}
-			} catch (NoActiveTransactionException | TransactionAbortedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			if (item.equals(bucket.item)) {
+				return true;
+			} 
 			bucket = bucket.next;
 		}
 		return false;
 	}
 	@Override
 	public boolean add(T item) {
-		// Java returns a negative number for the hash; this is just converting
-				// the negative number to a location in the array.
-				int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
-				Bucket bucket = table[hash];
-				if (contains(bucket, (TxObject)item)) {
-					return false;
-				}
-				table[hash] = new Bucket((TxObject)item, bucket);
-				return true;
+		HashTransactionAdd tx = new HashTransactionAdd(this, item);
+		return CarlSTM.execute(tx); 
 	}
 
 
 	@Override
 	public boolean contains(T item) {
-		int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
-		Bucket bucket = table[hash];
-		return contains(bucket, (TxObject)item);
+		HashTransactionContains tx = new HashTransactionContains(this, item ); 
+		return CarlSTM.execute(tx); 
 	}
 }

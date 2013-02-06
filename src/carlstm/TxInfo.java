@@ -64,9 +64,9 @@ class TxInfo<T> {
 			updates.get(object).newValue = value;
 		}else{
 			if(object.lock.writeLock().tryLock()){
-			Update<T> newUpdate = new Update<T>(object, object.value, value);
-			updates.put(object, newUpdate);
-			object.lock.readLock().unlock();
+				Update<T> newUpdate = new Update<T>(object, object.value, value);
+				updates.put(object, newUpdate);
+				object.lock.readLock().unlock();
 			}else{
 				throw new TransactionAbortedException();
 			}
@@ -101,61 +101,61 @@ class TxInfo<T> {
 					//check "expected old value"
 					if (curObject.value != updates.get(curObject).oldValue){
 						this.abort();
-						return false;
-					}
-				}else{
-						this.abort();
 						throw new TransactionAbortedException();
 					}
 				}else{
-					//the oldValue != newValue then we have to acquire the write lock
-					if(curObject.lock.writeLock().tryLock()){
-						txWriteLockAcquired.add(curObject);
-						//check "expected old value"
-						if (curObject.value != updates.get(curObject).oldValue){
-							this.abort();
-							return false;
-						}
-
-					}else{
+					this.abort();
+					throw new TransactionAbortedException();
+				}
+			}else{
+				//the oldValue != newValue then we have to acquire the write lock
+				if(curObject.lock.writeLock().tryLock()){
+					txWriteLockAcquired.add(curObject);
+					//check "expected old value"
+					if (curObject.value != updates.get(curObject).oldValue){
 						this.abort();
 						throw new TransactionAbortedException();
 					}
+
+				}else{
+					this.abort();
+					throw new TransactionAbortedException();
 				}
-				//Release the readLock()
-				this.ReleaseReadLocks();
-				//Perform the write update
-				for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
-					TxObject<T> cur =  txWriteLockAcquired.get(i);
-					cur.value = updates.get(cur).newValue;
-				}
-				//Release the write locks
-				this.ReleaseWriteLocks();
 			}
 
-			return success;
 		}
+		//Release the readLock()
+		this.ReleaseReadLocks();
+		//Perform the write update
+		for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
+			TxObject<T> cur =  txWriteLockAcquired.get(i);
+			cur.value = updates.get(cur).newValue;
+		}
+		//Release the write locks
+		this.ReleaseWriteLocks();
+		return success;
+	}
 
-		/**
-		 * This method cleans up any transactional state if a transaction aborts.
-		 */
-		void ReleaseReadLocks(){
-			for (int i = 0; i <  txReadLockAcquired.size() ; i++){
-				TxObject<T> cur =  txReadLockAcquired.get(i);
-				cur.lock.readLock().unlock();
-				txReadLockAcquired.remove(i);
-			}
-		}
-		void ReleaseWriteLocks(){
-			for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
-				TxObject<T> cur =  txWriteLockAcquired.get(i);
-				cur.lock.writeLock().unlock();
-				txWriteLockAcquired.remove(i);
-			}
-		}
-		void abort() {
-			this.ReleaseReadLocks();
-			this.ReleaseWriteLocks();
-			updates.clear();
+	/**
+	 * This method cleans up any transactional state if a transaction aborts.
+	 */
+	void ReleaseReadLocks(){
+		for (int i = 0; i <  txReadLockAcquired.size() ; i++){
+			TxObject<T> cur =  txReadLockAcquired.get(i);
+			cur.lock.readLock().unlock();
+			txReadLockAcquired.remove(i);
 		}
 	}
+	void ReleaseWriteLocks(){
+		for (int i = 0; i <  txWriteLockAcquired.size() ; i++){
+			TxObject<T> cur =  txWriteLockAcquired.get(i);
+			cur.lock.writeLock().unlock();
+			txWriteLockAcquired.remove(i);
+		}
+	}
+	void abort() {
+		this.ReleaseReadLocks();
+		this.ReleaseWriteLocks();
+		updates.clear();
+	}
+}
