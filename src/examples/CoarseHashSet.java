@@ -43,8 +43,7 @@ public class CoarseHashSet<T> implements Set<T> {
 	 * Capacity of the array. Since we do not support resizing, this is a
 	 * constant.
 	 */
-	private static final int CAPACITY = 1024;
-
+	public static  int CAPACITY = 1024;
 	/**
 	 * Create a new HashSet.
 	 */
@@ -99,5 +98,11 @@ public class CoarseHashSet<T> implements Set<T> {
 		Bucket bucket = table[hash];
 		return contains(bucket, item);
 	}
+	public static void SetCapacity(int cap) {
+		// TODO Auto-generated method stub
+		CAPACITY = cap; 
+		
+	}
+	
 	
 }

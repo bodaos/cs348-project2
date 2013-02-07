@@ -25,6 +25,7 @@ public class CarlSTMHashSet<T> implements Set<T> {
 			int hash = (someObject.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
 			@SuppressWarnings("unchecked")
 			TxObject<Bucket> head = someSet.table[hash];
+
 			Bucket oldHeadBucket = head.read();
 			if (contains(oldHeadBucket, someObject)) {
 				return false;
@@ -37,9 +38,9 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	}
 	public  class HashTransactionContains implements Transaction<Boolean> {
 		public 
-		CarlSTMHashSet someSet;
+		CarlSTMHashSet<T> someSet;
 		T someObject;
-		public HashTransactionContains(CarlSTMHashSet set, T object){
+		public HashTransactionContains(CarlSTMHashSet<T> set, T object){
 			this.someSet = set;
 			this.someObject = object;
 		}
@@ -87,12 +88,20 @@ public class CarlSTMHashSet<T> implements Set<T> {
 	 * Capacity of the array. Since we do not support resizing, this is a
 	 * constant.
 	 */
-	private static final int CAPACITY = 1024;
+	public static int CAPACITY = 1024;
+	public static void SetCapacity(int cap){
+		CAPACITY = cap; 
+	}
 	/**
 	 * Create a new CarlSTMH ashSet.
 	 */
+	
+	@SuppressWarnings("unchecked")
 	public CarlSTMHashSet() {
 		this.table = new TxObject[CAPACITY];
+		for (int i = 0; i < this.table.length; i ++){
+			this.table[i] = new TxObject(null); 
+		}
 	}
 	/**
 	 * A helper method to see if an item is stored at a given bucket.

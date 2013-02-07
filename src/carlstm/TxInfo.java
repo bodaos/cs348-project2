@@ -2,10 +2,9 @@ package carlstm;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
+
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReadWriteLock;
+
 /**
  * This class holds transactional state for a single thread. You should use
  * {@link java.lang.ThreadLocal} to allocate a TxInfo to each Java thread. This
@@ -133,6 +132,7 @@ class TxInfo<T> {
 		}
 		//Release the write locks
 		this.ReleaseWriteLocks();
+		this.end(); 
 		return success;
 	}
 
@@ -157,5 +157,6 @@ class TxInfo<T> {
 		this.ReleaseReadLocks();
 		this.ReleaseWriteLocks();
 		updates.clear();
+		active = false;
 	}
 }

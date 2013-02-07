@@ -1,6 +1,5 @@
 package examples;
 
-import java.util.concurrent.locks.Lock;
 
 /**
  * This is a simple implementation of a Hash Set with separate chaining and no

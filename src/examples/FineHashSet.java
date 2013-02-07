@@ -1,6 +1,8 @@
 package examples;
 
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 
 /**
  * This is a simple implementation of a Hash Set with separate chaining and no
@@ -12,7 +14,7 @@ import java.util.concurrent.locks.Lock;
 
 public class FineHashSet<T> implements Set<T> {
 
-
+	public Lock[] lockArray; 
 
 	/**
 	 * Helper class - basically is a linked list of items that happen to map to
@@ -38,10 +40,8 @@ public class FineHashSet<T> implements Set<T> {
 		 * @param next next item in the list
 		 */
 		public  Bucket(Object item, Bucket next) {
-			synchronized (next) {
 				this.item = item;
 				this.next = next;
-			}
 		}
 	}
 
@@ -55,13 +55,19 @@ public class FineHashSet<T> implements Set<T> {
 	 * Capacity of the array. Since we do not support resizing, this is a
 	 * constant.
 	 */
-	private static final int CAPACITY = 1024;
-
+	public static int CAPACITY = 1024;
+	public static  void SetCapacity(int cap){
+		CAPACITY = cap; 
+	}
 	/**
 	 * Create a new FineHashSet.
 	 */
 	public FineHashSet() {
 		this.table = new Bucket[CAPACITY];
+		this.lockArray = new Lock[CAPACITY]; 
+		for (int i = 0; i < CAPACITY; i++){
+			this.lockArray[i] = new ReentrantLock(); 
+		}
 	}
 
 	/**
@@ -72,7 +78,7 @@ public class FineHashSet<T> implements Set<T> {
 	 * @return true if the item is in the bucket
 	 */
 	private boolean contains(Bucket bucket, T item) {
-		synchronized (bucket) {
+		if (bucket == null) return false; 
 			while (bucket != null) {
 
 				if (item.equals(bucket.item)) {
@@ -81,7 +87,6 @@ public class FineHashSet<T> implements Set<T> {
 				bucket = bucket.next;
 			}
 			return false;
-		}
 	}
 
 	/*
@@ -97,9 +102,9 @@ public class FineHashSet<T> implements Set<T> {
 		if (contains(bucket, item)) {
 			return false;
 		}
-		synchronized (bucket) {
-			table[hash] = new Bucket(item, bucket);
-		}
+		lockArray[hash].lock(); 
+		table[hash] = new Bucket(item, bucket);
+		lockArray[hash].unlock(); 
 		return true;
 	}
 
@@ -110,7 +115,13 @@ public class FineHashSet<T> implements Set<T> {
 	@Override
 	public boolean contains(T item) {
 		int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
-		Bucket bucket = table[hash];
-		return contains(bucket, item);
+		if (lockArray[hash] == null ) lockArray[hash] = new ReentrantLock(); 
+		lockArray[hash].lock(); 
+		try{
+			Bucket bucket = table[hash];
+			return contains(bucket, item);
+		} finally{
+			lockArray[hash].unlock(); 
+		}
 	}
 }

@@ -34,7 +34,11 @@ public class CarlSTM {
 	 * backoff time
 	 *
 	 */
-	long backoff = 1;
+	static long backoff = 1;
+	
+	public static void SetBackoff(long time){
+		backoff = time; 
+	}
     @SuppressWarnings("rawtypes")
 	public static final ThreadLocal<TxInfo> threadLocal =
             new ThreadLocal<TxInfo>() {
@@ -52,7 +56,7 @@ public class CarlSTM {
 	 * @return result of the transaction
 	 */
 	public static <T> T execute(Transaction<T> tx) {
-		long wait = 1;
+		long wait = backoff;
 		while(true){
 		try {
 			threadLocal.get().start();
