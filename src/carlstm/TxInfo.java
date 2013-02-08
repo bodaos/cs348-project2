@@ -13,6 +13,8 @@ import java.util.Map.Entry;
  */
 
 class TxInfo<T> {
+	public int successCount = 0; 
+	public int failCount = 0; 
 	/**
 	 * variable to indicate if a thread is running
 	 *
@@ -53,6 +55,7 @@ class TxInfo<T> {
 				object.lock.readLock().unlock();
 				return newUpdate.newValue;
 			}else{
+				this.abort(); 
 				throw new TransactionAbortedException();
 			}
 
@@ -67,6 +70,7 @@ class TxInfo<T> {
 				updates.put(object, newUpdate);
 				object.lock.readLock().unlock();
 			}else{
+				this.abort(); 
 				throw new TransactionAbortedException();
 			}
 		}

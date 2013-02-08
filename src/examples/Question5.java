@@ -2,9 +2,8 @@ package examples;
 
 import java.util.Random;
 
-import carlstm.CarlSTM;
+import carlstm.CarlSTM; 
 
-import examples.Question3.TransAdd;
 
 public class Question5 {
 
@@ -13,39 +12,46 @@ public class Question5 {
 	 */
 	static class TransAdd extends Thread{
 		public CarlSTMHashSet<Integer> set; 
-
-		public TransAdd( CarlSTMHashSet<Integer> set){
+		public int work; 
+		public int failure; 
+		public TransAdd( CarlSTMHashSet<Integer> set, int work){
+			this.work = work;
 			this.set =set; 
 		}
 		@Override
 		public void run() {
 			Random generator = new Random();
-			for (int i = 0; i < Question3.elementN ; i++ ){
-				Integer integer = generator.nextInt(); 
+			for (int i = 0; i < work; i++ ){
+				int integer = generator.nextInt(); 
 				set.add(integer); 
+				set.contains(generator.nextInt()); 
 			}
-		}
+			failure = CarlSTM.printCount(); 		}
 	}
+
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		long[] backoffArray = {0, 10, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 100000000 }; 
+		long[] backoffArray = {0, 1, 2, 4, 6, 8, 10, 12, 14, 16,18, 20, 22, 24, 26, 28, 30,  32}; 
 		long[] durationArray  = new long[backoffArray.length];
 		long startTime =System.currentTimeMillis();
 		long duration; 
+		int failCount = 0; 
 		for (int i = 0; i < backoffArray.length; i++){
+			failCount = 0; 
 			CarlSTM.SetBackoff(backoffArray[i]); 
 			CarlSTMHashSet.SetCapacity(10); 
 			startTime =System.currentTimeMillis();
 			CarlSTMHashSet<Integer> trans = new CarlSTMHashSet<Integer>(); 
 			TransAdd[] transThreadsArray = new TransAdd[100]; 
-			for (int j = 0; j < 100 ; j ++ ){
-				transThreadsArray[i] = new TransAdd(trans); 
+			for (int j = 0; j < 5 ; j ++ ){
+				transThreadsArray[i] = new TransAdd(trans, 1000); 
 				transThreadsArray[i].start(); 
 			}
-			for (int j = 0;j < 100 ; j ++ ){
+			for (int j = 0;j < 5 ; j ++ ){
 				try {
 					transThreadsArray[i].join();
+					failCount += transThreadsArray[i].failure; 
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					System.out.print("trans add interrupted"); 
@@ -54,7 +60,7 @@ public class Question5 {
 			}
 			duration = System.currentTimeMillis() - startTime;
 			durationArray[i] = duration; 
-			System.out.println(duration); 
+			System.out.println(backoffArray[i] + "\t" + failCount); 
 		}
 		
 		System.out.println("done"); 

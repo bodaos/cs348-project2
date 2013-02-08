@@ -55,6 +55,10 @@ public class CarlSTM {
 	 * @param tx transaction to be executed
 	 * @return result of the transaction
 	 */
+    public static int printCount(){
+		//System.out.println(threadLocal.get().successCount + "\t" + threadLocal.get().failCount); 
+		return threadLocal.get().failCount; 
+    }
 	public static <T> T execute(Transaction<T> tx) {
 		long wait = backoff;
 		while(true){
@@ -62,23 +66,27 @@ public class CarlSTM {
 			threadLocal.get().start();
 			T result =  tx.run();
 			threadLocal.get().commit();
+			threadLocal.get().successCount += 1; 
 			return result;
 		} catch (NoActiveTransactionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			threadLocal.get().failCount += 1; 
 		} catch (TransactionAbortedException e) {
 			// TODO Auto-generated catch block
 			//e.printStackTrace();
 			//Clears all the existing updates and re-run the transaction;
+			threadLocal.get().failCount += 1; 
+
 			try {
 				Thread.sleep(wait);
+				
 			} catch (InterruptedException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 				System.out.println("sleep interrupted");
 				return null;
 			}
-			threadLocal.set(new TxInfo<T>());
 			wait = wait*2;
 		}
 		}

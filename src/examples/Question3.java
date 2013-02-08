@@ -19,7 +19,7 @@ public class Question3 {
 		public void run() {
 			Random generator = new Random();
 			for (int i = 0; i < work ; i++ ){
-				Integer integer = generator.nextInt(); 
+				int integer = generator.nextInt(); 
 				set.add(integer); 
 				set.contains(generator.nextInt()); 
 			}
@@ -37,7 +37,7 @@ public class Question3 {
 		public void run() {
 			Random generator = new Random();
 			for (int i = 0; i < work ; i++ ){
-				Integer integer = generator.nextInt(); 
+				int integer = generator.nextInt(); 
 				set.add(integer); 
 				set.contains(generator.nextInt()); 
 			}
@@ -55,7 +55,7 @@ public class Question3 {
 		public void run() {
 			Random generator = new Random();
 			for (int i = 0; i < work; i++ ){
-				Integer integer = generator.nextInt(); 
+				int integer = generator.nextInt(); 
 				set.add(integer); 
 				set.contains(generator.nextInt()); 
 			}
@@ -66,11 +66,11 @@ public class Question3 {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
-		int[] threadNArray = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,16384, 32768, 65536, 131072 }; 
+		int[] threadNArray = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048 }; 
 		long[][] timeArray = new long[3][threadNArray.length];
 		for (int j = 0; j < threadNArray.length; j ++ ){
 			threadN = threadNArray[j]; 
-			int capacity = 2000;
+			int capacity = 1024;
 			CoarseHashSet.SetCapacity(capacity); 
 			FineHashSet.SetCapacity(capacity);
 			CarlSTMHashSet.SetCapacity(capacity); 

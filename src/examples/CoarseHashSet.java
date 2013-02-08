@@ -93,7 +93,7 @@ public class CoarseHashSet<T> implements Set<T> {
 	 * @see examples.Set#contains(java.lang.Object)
 	 */
 	@Override
-	public synchronized boolean  contains(T item) {
+	public synchronized boolean contains(T item) {
 		int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
 		Bucket bucket = table[hash];
 		return contains(bucket, item);

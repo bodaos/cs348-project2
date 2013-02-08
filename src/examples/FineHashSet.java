@@ -99,13 +99,16 @@ public class FineHashSet<T> implements Set<T> {
 		// the negative number to a location in the array.
 		int hash = (item.hashCode() % CAPACITY + CAPACITY) % CAPACITY;
 		Bucket bucket = table[hash];
-		if (contains(bucket, item)) {
-			return false;
-		}
 		lockArray[hash].lock(); 
-		table[hash] = new Bucket(item, bucket);
-		lockArray[hash].unlock(); 
-		return true;
+		try {
+			if (contains(bucket, item)) {
+				return false;
+			}
+			table[hash] = new Bucket(item, bucket);
+			return true;
+		} finally {
+			lockArray[hash].unlock();
+		}
 	}
 
 	/*
